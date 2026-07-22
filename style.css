@@ -177,6 +177,15 @@ h1 {
     cursor: pointer;
     background: white;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.bet-btn .odds {
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.8;
 }
 
 .bet-btn:hover {

@@ -31,13 +31,25 @@
             <div class="bet-input-group">
                 <label>下注金额：</label>
                 <input type="number" id="betAmount" min="1" value="10" />
-                <span class="bet-hint">（获胜得3倍）</span>
+                <span class="bet-hint">（赔率根据胜率调整）</span>
             </div>
             <div class="bet-buttons">
-                <button class="bet-btn" data-snake="沫桐">沫桐</button>
-                <button class="bet-btn" data-snake="童谣">童谣</button>
-                <button class="bet-btn" data-snake="斌飞">斌飞</button>
-                <button class="bet-btn" data-snake="曹">曹</button>
+                <button class="bet-btn" data-snake="沫桐">
+                    沫桐
+                    <span class="odds" data-snake="沫桐">赔率: 2.0x</span>
+                </button>
+                <button class="bet-btn" data-snake="童谣">
+                    童谣
+                    <span class="odds" data-snake="童谣">赔率: 2.0x</span>
+                </button>
+                <button class="bet-btn" data-snake="斌飞">
+                    斌飞
+                    <span class="odds" data-snake="斌飞">赔率: 2.0x</span>
+                </button>
+                <button class="bet-btn" data-snake="曹">
+                    曹
+                    <span class="odds" data-snake="曹">赔率: 2.0x</span>
+                </button>
             </div>
         </div>
 
@@ -75,7 +87,8 @@
                 <li>💰 初始积分100，玩家积分无上限</li>
                 <li>⏰ 离线每10秒获得1积分（最多获得100积分）</li>
                 <li>📊 每局游戏前选择一条AI并下注积分</li>
-                <li>🏆 支持的AI获胜，获得下注金额的3倍</li>
+                <li>🏆 支持的AI获胜，获得下注金额×赔率的积分</li>
+                <li>📈 赔率根据AI胜率调整（基础2倍，最高5倍）</li>
                 <li>❌ 支持失败，不获得积分</li>
                 <li>🐍 4条AI蛇自动竞争，最后存活者获胜</li>
                 <li>⏸️ 按空格键可以暂停/继续观战</li>

@@ -66,6 +66,7 @@ class SnakeGame {
         this.pointsElement = document.getElementById('playerPoints');
         this.betAmountInput = document.getElementById('betAmount');
         this.betButtons = document.querySelectorAll('.bet-btn');
+        this.oddsElements = document.querySelectorAll('.odds');
 
         // 游戏变量
         this.snakes = [];  // 所有蛇的数组
@@ -84,6 +85,7 @@ class SnakeGame {
         this.lastOnlineTime = this.loadLastOnlineTime();
         this.betSnake = null;       // 下注的蛇
         this.betAmount = 0;         // 下注金额
+        this.betOdds = 0;           // 下注赔率
 
         // 排行榜系统
         this.winRecords = this.loadWinRecords();
@@ -149,13 +151,18 @@ class SnakeGame {
             return;
         }
 
+        // 获取当前蛇的赔率
+        const odds = this.calculateOdds(snakeName);
+
         // 设置下注
         this.betSnake = snakeName;
         this.betAmount = betAmount;
+        this.betOdds = odds;
 
         // 更新UI
         this.updateBetDisplay();
-        alert(`已下注 ${betAmount} 积分支持 ${snakeName}！\n如果 ${snakeName} 获胜，你将获得 ${betAmount * 3} 积分！`);
+        const potentialWin = Math.floor(betAmount * odds);
+        alert(`已下注 ${betAmount} 积分支持 ${snakeName}！\n当前赔率：${odds.toFixed(1)}x\n如果 ${snakeName} 获胜，你将获得 ${potentialWin} 积分！`);
     }
 
     startGame() {
@@ -602,10 +609,10 @@ class SnakeGame {
         let pointsChange = 0;
         if (this.betSnake && this.betAmount > 0) {
             if (winner === this.betSnake) {
-                // 下注成功，获得3倍积分
-                pointsChange = this.betAmount * 3;
+                // 下注成功，获得赔率倍数的积分
+                pointsChange = Math.floor(this.betAmount * this.betOdds);
                 this.playerPoints += pointsChange;
-                betResult = `恭喜！${this.betSnake} 获胜！\n你赢得了 ${pointsChange} 积分！`;
+                betResult = `恭喜！${this.betSnake} 获胜！\n赔率：${this.betOdds.toFixed(1)}x\n你赢得了 ${pointsChange} 积分！`;
             } else {
                 // 下注失败
                 betResult = `很遗憾，${this.betSnake} 没有获胜。\n你失去了 ${this.betAmount} 积分。`;
@@ -669,9 +676,11 @@ class SnakeGame {
         this.foods = [];  // 清空食物数组
         this.betSnake = null;
         this.betAmount = 0;
+        this.betOdds = 0;
         this.updateAllScores();
         this.updateButtons();
         this.updateBetDisplay();
+        this.updateOddsDisplay();
         this.drawWelcomeScreen();
     }
 
@@ -688,10 +697,46 @@ class SnakeGame {
         this.betButtons.forEach(btn => {
             if (btn.dataset.snake === this.betSnake) {
                 btn.classList.add('bet-selected');
-                btn.textContent = `${btn.dataset.snake} (已下注 ${this.betAmount})`;
+                btn.innerHTML = `${btn.dataset.snake} (已下注 ${this.betAmount})<span class="odds" data-snake="${btn.dataset.snake}">赔率: ${this.betOdds.toFixed(1)}x</span>`;
             } else {
                 btn.classList.remove('bet-selected');
-                btn.textContent = btn.dataset.snake;
+                const odds = this.calculateOdds(btn.dataset.snake);
+                btn.innerHTML = `${btn.dataset.snake}<span class="odds" data-snake="${btn.dataset.snake}">赔率: ${odds.toFixed(1)}x</span>`;
+            }
+        });
+    }
+
+    // 计算赔率：根据胜率调整，基础赔率2，最高赔率5
+    calculateOdds(snakeName) {
+        if (this.totalGames === 0) {
+            // 如果没有历史记录，返回基础赔率
+            return 3.5;
+        }
+
+        const wins = this.winRecords[snakeName] || 0;
+        const winRate = wins / this.totalGames; // 胜率 0-1
+
+        // 赔率公式：5 - (胜率 × 3)
+        // 胜率0% -> 赔率5.0
+        // 胜率33% -> 赔率4.0
+        // 胜率66% -> 赔率3.0
+        // 胜率100% -> 赔率2.0
+        let odds = 5 - (winRate * 3);
+
+        // 确保赔率在2-5之间
+        odds = Math.max(2, Math.min(5, odds));
+
+        return odds;
+    }
+
+    // 更新所有赔率显示
+    updateOddsDisplay() {
+        this.betButtons.forEach(btn => {
+            const snakeName = btn.dataset.snake;
+            const odds = this.calculateOdds(snakeName);
+
+            if (snakeName !== this.betSnake) {
+                btn.innerHTML = `${snakeName}<span class="odds" data-snake="${snakeName}">赔率: ${odds.toFixed(1)}x</span>`;
             }
         });
     }
@@ -830,6 +875,9 @@ class SnakeGame {
         if (totalGamesElement) {
             totalGamesElement.textContent = this.totalGames;
         }
+
+        // 更新赔率显示
+        this.updateOddsDisplay();
     }
 }
 
