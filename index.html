@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇对战 - 沫同 vs 童谣</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 沫同 vs 童谣</h1>
+        <div class="game-info">
+            <div class="score player-score">
+                <span>🟢 沫同：</span>
+                <span id="score">0</span>
+            </div>
+            <div class="high-score">
+                <span>最高分：</span>
+                <span id="highScore">0</span>
+            </div>
+            <div class="score ai-score">
+                <span>🔵 童谣：</span>
+                <span id="aiScore">0</span>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            <button id="startBtn" class="btn btn-primary">开始游戏</button>
+            <button id="pauseBtn" class="btn btn-secondary" disabled>暂停</button>
+            <button id="resetBtn" class="btn btn-danger">重置</button>
+        </div>
+        <div class="instructions">
+            <h3>游戏说明：</h3>
+            <ul>
+                <li>🟢 <strong>沫同</strong>：你控制 | 🔵 <strong>童谣</strong>：AI对手</li>
+                <li>使用方向键 ↑ ↓ ← → 控制沫同</li>
+                <li>与童谣竞争，抢先吃到红色食物</li>
+                <li>撞墙、撞到自己或对方的身体都会输掉游戏</li>
+                <li>按空格键可以暂停/继续游戏</li>
+            </ul>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
