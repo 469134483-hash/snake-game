@@ -8,11 +8,12 @@ const CONFIG = {
     AI_ENABLED: true,
     AI_REACTION_DELAY: 50,    // AI反应延迟（毫秒）- 更快的反应速度
     INITIAL_POINTS: 100,      // 初始积分
-    MAX_OFFLINE_POINTS: 100,  // 离线最多获得100积分
+    MAX_OFFLINE_POINTS: 1000, // 离线最多获得1000积分
     OFFLINE_GAIN_RATE: 10000, // 离线获得积分间隔（10秒=10000毫秒）
     OFFLINE_GAIN_AMOUNT: 1,   // 每次离线获得的积分
     FOOD_SPAWN_INTERVAL: 15000, // 额外食物刷新间隔（15秒=15000毫秒）
-    SPEED_BOOST_PER_10_POINTS: 0.01 // 每10积分提升1%速度（减少1%的移动间隔）
+    SPEED_BOOST_PER_10_POINTS: 0.01, // 每10积分提升1%速度（减少1%的移动间隔）
+    MAX_DEBT_BET: 1000        // 负分时单次押注上限
 };
 
 // 蛇的配置
@@ -26,12 +27,11 @@ const SNAKE_CONFIG = [
 // 天赋池
 const TALENT_POOL = [
     {
-        name: '疾风步',
-        icon: '⚡',
-        description: '移动速度+15%，但每次吃食物只得5分',
-        type: 'speed',
-        speedBoost: 0.15,
-        foodPoints: 5
+        name: '耍赖',
+        icon: '😈',
+        description: '死亡后可重生1次，回到初始位置和状态',
+        type: 'revive',
+        maxRevives: 1
     },
     {
         name: '铁壁',
@@ -51,7 +51,7 @@ const TALENT_POOL = [
     {
         name: '磁力场',
         icon: '🧲',
-        description: '优先向地图中心移动，更容易获得食物',
+        description: '可提前1格吸取食物，并优先向地图中心移动',
         type: 'magnet',
         centerBonus: 2
     }
@@ -105,6 +105,12 @@ class SnakeGame {
             '斌飞': document.getElementById('shield3'),
             '曹': document.getElementById('shield4')
         };
+        this.reviveElements = {
+            '沫桐': document.getElementById('revive1'),
+            '童谣': document.getElementById('revive2'),
+            '斌飞': document.getElementById('revive3'),
+            '曹': document.getElementById('revive4')
+        };
         this.highScoreElement = document.getElementById('highScore');
         this.startBtn = document.getElementById('startBtn');
         this.pauseBtn = document.getElementById('pauseBtn');
@@ -120,6 +126,8 @@ class SnakeGame {
         this.alive = {};   // 各蛇存活状态
         this.shields = {}; // 各蛇护盾数量
         this.foodEaten = {}; // 各蛇吃掉的食物数量
+        this.revivesUsed = {}; // 各蛇已使用的重生次数
+        this.initialPositions = {}; // 各蛇初始位置
         this.foods = [];   // 食物数组（支持多个食物）
         this.highScore = this.loadHighScore();
         this.gameState = GAME_STATE.READY;
@@ -197,9 +205,18 @@ class SnakeGame {
             return;
         }
 
-        if (betAmount > this.playerPoints) {
-            alert(`积分不足！你当前有 ${this.playerPoints} 积分。`);
-            return;
+        // 如果玩家积分为负，限制单次押注上限
+        if (this.playerPoints < 0) {
+            if (betAmount > CONFIG.MAX_DEBT_BET) {
+                alert(`负分状态下单次押注不能超过 ${CONFIG.MAX_DEBT_BET} 积分！\n你当前积分：${this.playerPoints}`);
+                return;
+            }
+        } else {
+            // 正分时不能超过当前积分
+            if (betAmount > this.playerPoints) {
+                alert(`积分不足！你当前有 ${this.playerPoints} 积分。`);
+                return;
+            }
         }
 
         // 获取当前蛇的赔率
@@ -236,6 +253,8 @@ class SnakeGame {
         this.alive = {};
         this.shields = {};
         this.foodEaten = {};
+        this.revivesUsed = {};
+        this.initialPositions = {};
         this.foods = [];  // 清空食物数组
 
         // 随机分配天赋（每条蛇获得不同的天赋）
@@ -260,6 +279,15 @@ class SnakeGame {
             // 获取这条蛇的随机天赋
             const talent = this.currentTalents[config.name];
 
+            // 保存初始位置信息（用于重生）
+            this.initialPositions[config.name] = {
+                x: pos.x,
+                y: pos.y,
+                direction: pos.direction,
+                dirX: pos.direction.x,
+                dirY: pos.direction.y
+            };
+
             this.snakes.push({
                 name: config.name,
                 color: config.color,
@@ -269,8 +297,8 @@ class SnakeGame {
                 talent: talent,            // 随机分配的天赋
                 segments: [
                     { x: pos.x, y: pos.y },
-                    { x: pos.x - dirX, y: pos.y - dirY },
-                    { x: pos.x - dirX * 2, y: pos.y - dirY * 2 }
+                    { x: pos.x - pos.direction.x, y: pos.y - pos.direction.y },
+                    { x: pos.x - pos.direction.x * 2, y: pos.y - pos.direction.y * 2 }
                 ],
                 direction: pos.direction,
                 lastMoveTime: Date.now()
@@ -280,6 +308,7 @@ class SnakeGame {
             this.alive[config.name] = true;
             this.shields[config.name] = 0;
             this.foodEaten[config.name] = 0;
+            this.revivesUsed[config.name] = 0;
         });
 
         // 生成第一个食物
@@ -363,11 +392,8 @@ class SnakeGame {
             let speedBoost = Math.floor(snakeScore / 10) * CONFIG.SPEED_BOOST_PER_10_POINTS;
 
             // 应用天赋加成
-            if (snake.talent.type === 'speed') {
-                // 沫桐：固定速度加成
-                speedBoost += snake.talent.speedBoost;
-            } else if (snake.talent.type === 'rage') {
-                // 斌飞：根据吃掉的食物数量增加速度
+            if (snake.talent.type === 'rage') {
+                // 狂暴：根据吃掉的食物数量增加速度
                 const foodCount = this.foodEaten[snake.name] || 0;
                 const rageBoost = Math.min(foodCount * snake.talent.speedPerFood, snake.talent.maxSpeedBoost);
                 speedBoost += rageBoost;
@@ -400,17 +426,26 @@ class SnakeGame {
             const hasCollision = this.checkWallCollision(newHead) || this.checkSnakeCollision(newHead, snake.segments) || this.checkAllSnakesCollision(newHead, index);
 
             if (hasCollision) {
-                // 检查是否有护盾（童谣的天赋）
+                // 检查是否有护盾（铁壁天赋）
                 if (this.shields[snake.name] > 0) {
                     // 消耗护盾，避免死亡
                     this.shields[snake.name] -= 1;
+                    this.updateAllScores();
                     // 护盾激活，跳过这次移动
                     return;
-                } else {
-                    // 没有护盾，死亡
-                    this.alive[snake.name] = false;
+                }
+
+                // 检查是否有重生机会（耍赖天赋）
+                if (snake.talent.type === 'revive' && this.revivesUsed[snake.name] < snake.talent.maxRevives) {
+                    // 使用重生
+                    this.revivesUsed[snake.name] += 1;
+                    this.reviveSnake(snake, index);
                     return;
                 }
+
+                // 没有护盾也没有重生，死亡
+                this.alive[snake.name] = false;
+                return;
             }
 
             // 添加新头部
@@ -420,18 +455,26 @@ class SnakeGame {
             let ateFood = false;
             for (let i = this.foods.length - 1; i >= 0; i--) {
                 const food = this.foods[i];
-                if (newHead.x === food.x && newHead.y === food.y) {
-                    // 根据天赋给予不同的分数
-                    let points = 10;
-                    if (snake.talent.type === 'speed' && snake.talent.foodPoints) {
-                        // 沫桐：每次只得5分
-                        points = snake.talent.foodPoints;
-                    }
+
+                // 磁力场天赋：提前一格获取食物（检测距离为1的食物）
+                let canEatFood = false;
+                if (snake.talent.type === 'magnet') {
+                    // 计算曼哈顿距离
+                    const distance = Math.abs(newHead.x - food.x) + Math.abs(newHead.y - food.y);
+                    canEatFood = distance <= 1;
+                } else {
+                    // 其他蛇需要头部直接接触食物
+                    canEatFood = (newHead.x === food.x && newHead.y === food.y);
+                }
+
+                if (canEatFood) {
+                    // 所有蛇获得相同分数
+                    const points = 10;
 
                     this.scores[snake.name] += points;
                     this.foodEaten[snake.name] += 1;
 
-                    // 童谣的天赋：每吃5个食物获得1个护盾
+                    // 铁壁天赋：每吃5个食物获得1个护盾
                     if (snake.talent.type === 'shield') {
                         if (this.foodEaten[snake.name] % snake.talent.shieldPerFood === 0) {
                             this.shields[snake.name] += 1;
@@ -489,6 +532,29 @@ class SnakeGame {
                 segment.x === position.x && segment.y === position.y
             );
         });
+    }
+
+    // 重生蛇（耍赖天赋）
+    reviveSnake(snake, snakeIndex) {
+        const initialPos = this.initialPositions[snake.name];
+        if (!initialPos) return;
+
+        // 重置为初始状态
+        snake.segments = [
+            { x: initialPos.x, y: initialPos.y },
+            { x: initialPos.x - initialPos.dirX, y: initialPos.y - initialPos.dirY },
+            { x: initialPos.x - initialPos.dirX * 2, y: initialPos.y - initialPos.dirY * 2 }
+        ];
+        snake.direction = initialPos.direction;
+        snake.lastMoveTime = Date.now();
+
+        // 重置分数和状态
+        this.scores[snake.name] = 0;
+        this.foodEaten[snake.name] = 0;
+        this.shields[snake.name] = 0;
+        this.alive[snake.name] = true;
+
+        this.updateAllScores();
     }
 
     getAINextDirection(snake, head) {
@@ -847,6 +913,20 @@ class SnakeGame {
                 shieldElement.style.display = shields > 0 ? 'inline' : 'none';
             }
         });
+
+        // 更新所有蛇的重生次数显示
+        SNAKE_CONFIG.forEach(config => {
+            const reviveElement = this.reviveElements[config.name];
+            const talent = this.currentTalents[config.name];
+            if (reviveElement && talent && talent.type === 'revive') {
+                const revivesLeft = talent.maxRevives - (this.revivesUsed[config.name] || 0);
+                reviveElement.textContent = `♥${revivesLeft}`;
+                reviveElement.style.display = 'inline';
+                reviveElement.style.opacity = revivesLeft > 0 ? '1' : '0.3';
+            } else if (reviveElement) {
+                reviveElement.style.display = 'none';
+            }
+        });
     }
 
     // 更新天赋显示
@@ -879,27 +959,50 @@ class SnakeGame {
         });
     }
 
-    // 计算赔率：根据胜率调整，基础赔率2，最高赔率5
+    // 计算赔率：基础赔率2，4条蛇根据胜率平均分配5的赔率
     calculateOdds(snakeName) {
         if (this.totalGames === 0) {
-            // 如果没有历史记录，返回基础赔率
-            return 3.5;
+            // 如果没有历史记录，返回平均赔率
+            return 2 + 5 / 4; // 2 + 1.25 = 3.25
         }
 
-        const wins = this.winRecords[snakeName] || 0;
-        const winRate = wins / this.totalGames; // 胜率 0-1
+        // 计算所有蛇的胜率
+        const snakeWinRates = {};
+        let totalWinRate = 0;
 
-        // 赔率公式：5 - (胜率 × 3)
-        // 胜率0% -> 赔率5.0
-        // 胜率33% -> 赔率4.0
-        // 胜率66% -> 赔率3.0
-        // 胜率100% -> 赔率2.0
-        let odds = 5 - (winRate * 3);
+        SNAKE_CONFIG.forEach(config => {
+            const wins = this.winRecords[config.name] || 0;
+            const winRate = wins / this.totalGames;
+            snakeWinRates[config.name] = winRate;
+            totalWinRate += winRate;
+        });
 
-        // 确保赔率在2-5之间
-        odds = Math.max(2, Math.min(5, odds));
+        // 避免除以0
+        if (totalWinRate === 0) {
+            return 2 + 5 / 4;
+        }
 
-        return odds;
+        // 计算该蛇的反向胜率权重
+        // 胜率越低，权重越高，赔率越高
+        const winRate = snakeWinRates[snakeName];
+        const inverseWinRate = 1 - winRate;
+
+        // 计算所有蛇的反向胜率总和
+        let totalInverseWinRate = 0;
+        SNAKE_CONFIG.forEach(config => {
+            totalInverseWinRate += (1 - snakeWinRates[config.name]);
+        });
+
+        // 根据反向胜率分配5的赔率
+        // 基础赔率2 + 按反向胜率比例分配的赔率
+        const distributedOdds = totalInverseWinRate > 0
+            ? (inverseWinRate / totalInverseWinRate) * 5
+            : 5 / 4;
+
+        const odds = 2 + distributedOdds;
+
+        // 确保赔率在合理范围内（2-7之间）
+        return Math.max(2, Math.min(7, odds));
     }
 
     // 更新所有赔率显示
