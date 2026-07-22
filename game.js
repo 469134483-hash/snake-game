@@ -205,16 +205,17 @@ class SnakeGame {
             return;
         }
 
-        // 如果玩家积分为负，限制单次押注上限
-        if (this.playerPoints < 0) {
-            if (betAmount > CONFIG.MAX_DEBT_BET) {
-                alert(`负分状态下单次押注不能超过 ${CONFIG.MAX_DEBT_BET} 积分！\n你当前积分：${this.playerPoints}`);
-                return;
-            }
-        } else {
-            // 正分时不能超过当前积分
-            if (betAmount > this.playerPoints) {
-                alert(`积分不足！你当前有 ${this.playerPoints} 积分。`);
+        // 检查押注上限
+        if (this.playerPoints < 0 && betAmount > CONFIG.MAX_DEBT_BET) {
+            // 负分状态下单次押注不能超过1000
+            alert(`负分状态下单次押注不能超过 ${CONFIG.MAX_DEBT_BET} 积分！\n你当前积分：${this.playerPoints}`);
+            return;
+        }
+
+        if (this.playerPoints >= 0 && betAmount > this.playerPoints) {
+            // 正分但积分不足，提示会变为负分
+            const deficit = betAmount - this.playerPoints;
+            if (!confirm(`你的积分不足！\n当前积分：${this.playerPoints}\n下注金额：${betAmount}\n将会产生 ${deficit} 的负债，确定继续吗？`)) {
                 return;
             }
         }
