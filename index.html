@@ -8,20 +8,60 @@
 </head>
 <body>
     <div class="container">
-        <h1>🐍 沫同 vs 童谣</h1>
+        <h1>🐍 AI贪吃蛇大乱斗</h1>
+
+        <!-- 玩家积分显示 -->
+        <div class="player-points">
+            <span>💰 你的积分：</span>
+            <span id="playerPoints" class="points-value">100</span>
+        </div>
+
+        <!-- 排行榜 -->
+        <div class="leaderboard-container">
+            <h3>🏆 战绩排行榜</h3>
+            <div class="total-games">总场数：<span id="totalGames">0</span></div>
+            <div id="leaderboard" class="leaderboard">
+                <!-- 排行榜内容由JS动态生成 -->
+            </div>
+        </div>
+
+        <!-- 下注区域 -->
+        <div class="betting-area">
+            <h3>📊 选择支持的AI并下注</h3>
+            <div class="bet-input-group">
+                <label>下注金额：</label>
+                <input type="number" id="betAmount" min="1" value="10" />
+                <span class="bet-hint">（获胜得3倍）</span>
+            </div>
+            <div class="bet-buttons">
+                <button class="bet-btn" data-snake="沫桐">沫桐</button>
+                <button class="bet-btn" data-snake="童谣">童谣</button>
+                <button class="bet-btn" data-snake="斌飞">斌飞</button>
+                <button class="bet-btn" data-snake="曹">曹</button>
+            </div>
+        </div>
+
         <div class="game-info">
-            <div class="score player-score">
-                <span>🟢 沫同：</span>
-                <span id="score">0</span>
+            <div class="score snake1">
+                <span>🟢 沫桐：</span>
+                <span id="score1">0</span>
             </div>
-            <div class="high-score">
-                <span>最高分：</span>
-                <span id="highScore">0</span>
-            </div>
-            <div class="score ai-score">
+            <div class="score snake2">
                 <span>🔵 童谣：</span>
-                <span id="aiScore">0</span>
+                <span id="score2">0</span>
             </div>
+            <div class="score snake3">
+                <span>🔴 斌飞：</span>
+                <span id="score3">0</span>
+            </div>
+            <div class="score snake4">
+                <span>🟠 曹：</span>
+                <span id="score4">0</span>
+            </div>
+        </div>
+        <div class="high-score-box">
+            <span>最高分：</span>
+            <span id="highScore">0</span>
         </div>
         <canvas id="gameCanvas" width="400" height="400"></canvas>
         <div class="controls">
@@ -32,11 +72,13 @@
         <div class="instructions">
             <h3>游戏说明：</h3>
             <ul>
-                <li>🟢 <strong>沫同</strong>：你控制 | 🔵 <strong>童谣</strong>：AI对手</li>
-                <li>使用方向键 ↑ ↓ ← → 控制沫同</li>
-                <li>与童谣竞争，抢先吃到红色食物</li>
-                <li>撞墙、撞到自己或对方的身体都会输掉游戏</li>
-                <li>按空格键可以暂停/继续游戏</li>
+                <li>💰 初始积分100，玩家积分无上限</li>
+                <li>⏰ 离线每10秒获得1积分（最多获得100积分）</li>
+                <li>📊 每局游戏前选择一条AI并下注积分</li>
+                <li>🏆 支持的AI获胜，获得下注金额的3倍</li>
+                <li>❌ 支持失败，不获得积分</li>
+                <li>🐍 4条AI蛇自动竞争，最后存活者获胜</li>
+                <li>⏸️ 按空格键可以暂停/继续观战</li>
             </ul>
         </div>
     </div>
